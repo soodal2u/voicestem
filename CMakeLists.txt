@@ -86,5 +86,5 @@ juce_add_console_app(VoiceStemSnapshot PRODUCT_NAME "VoiceStemSnapshot")
 target_sources(VoiceStemSnapshot PRIVATE tools/Snapshot.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp ${ENGINE_SOURCES})
 target_compile_definitions(VoiceStemSnapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JucePlugin_Name="VoiceStem")
 target_link_libraries(VoiceStemSnapshot
-    PRIVATE juce::juce_audio_processors juce::juce_dsp juce::juce_gui_basics dfwrap
+    PRIVATE juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics dfwrap
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)

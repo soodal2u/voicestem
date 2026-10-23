@@ -41,6 +41,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     float getSnrDb() const { return engine.getLastSnrDb(); }
     bool isModelOk() const { return modelOk.load(); }
+    int readMeterFrames (VoiceStemEngine::MeterFrame* dest, int maxFrames) { return engine.readMeterFrames (dest, maxFrames); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

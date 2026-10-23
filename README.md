@@ -23,6 +23,8 @@ out = Voice·direct + Reverb·reverb + Ambience·ambience
 | Default (DF3) | 50 ms | ~0.05 |
 | Low Latency (DF3-LL) | 30 ms | ~0.18 |
 
+The top of the editor shows a scrolling waveform (about 5 s, one pixel per 10 ms). Layers are stacked outward from the centre — Voice (blue), Reverb (purple), Ambience (green) — at their post-knob levels, so turning a knob down shrinks that colour right away. The grey outline is the original input; the gap between it and the coloured area is what was removed.
+
 Knob range is −60 (Off) to +12 dB. Defaults are Voice 0 dB, Ambience Off and Reverb 0 dB. Double-click resets a knob.
 
 ## Measured results (`tools/`, DeepFilterNet sample audio)

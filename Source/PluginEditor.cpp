@@ -72,10 +72,93 @@ void VoiceStemEditor::Look::drawToggleButton (juce::Graphics& g, juce::ToggleBut
     g.drawText (b.getButtonText(), r.withTrimmedLeft (6.0f), juce::Justification::centredLeft);
 }
 
+VoiceStemEditor::WaveformView::WaveformView (VoiceStemProcessor& p)
+    : proc (p), history (1024), scratch (1024)
+{
+    setOpaque (false);
+    startTimerHz (30);
+}
+
+void VoiceStemEditor::WaveformView::pull()
+{
+    const int n = proc.readMeterFrames (scratch.data(), (int) scratch.size());
+    for (int i = 0; i < n; ++i)
+    {
+        history[(size_t) writePos] = scratch[(size_t) i];
+        writePos = (writePos + 1) % (int) history.size();
+    }
+    if (n > 0)
+        repaint();
+}
+
+void VoiceStemEditor::WaveformView::paint (juce::Graphics& g)
+{
+    const auto area = getLocalBounds().toFloat();
+    g.setColour (background.withAlpha (0.7f));
+    g.fillRoundedRectangle (area, 8.0f);
+
+    const auto plot = area.reduced (6.0f, 8.0f);
+    const float mid = plot.getCentreY();
+    const float half = plot.getHeight() * 0.5f;
+    const int columns = juce::jmin ((int) plot.getWidth(), (int) history.size());
+    const int size = (int) history.size();
+
+    // dB scale so quiet speech is still visible: -54 dBFS .. 0 dBFS -> 0 .. full height.
+    auto toHeight = [half] (float peak) {
+        const float db = juce::Decibels::gainToDecibels (peak, -100.0f);
+        return half * juce::jlimit (0.0f, 1.0f, (db + 54.0f) / 54.0f);
+    };
+
+    // Cumulative heights per column: inner edge of each layer is the outer edge of the previous one.
+    juce::Path inputPath, layers[3];
+    for (auto& p : layers)
+        p.preallocateSpace (columns * 6 + 8);
+
+    std::vector<float> heights ((size_t) columns * 4);
+    for (int i = 0; i < columns; ++i)
+    {
+        const auto& f = history[(size_t) ((writePos - columns + i + size) % size)];
+        const float total = f.voice + f.reverb + f.ambience;
+        const float h = toHeight (total);
+        const float scale = total > 1e-9f ? h / total : 0.0f;
+        heights[(size_t) i * 4 + 0] = f.voice * scale;
+        heights[(size_t) i * 4 + 1] = (f.voice + f.reverb) * scale;
+        heights[(size_t) i * 4 + 2] = h;
+        heights[(size_t) i * 4 + 3] = toHeight (f.input);
+    }
+
+    auto mirrored = [&] (int layer) {
+        juce::Path p;
+        const float x0 = plot.getRight() - (float) columns;
+        p.startNewSubPath (x0, mid);
+        for (int i = 0; i < columns; ++i)
+            p.lineTo (x0 + (float) i, mid - heights[(size_t) i * 4 + (size_t) layer]);
+        for (int i = columns - 1; i >= 0; --i)
+            p.lineTo (x0 + (float) i, mid + heights[(size_t) i * 4 + (size_t) layer]);
+        p.closeSubPath();
+        return p;
+    };
+
+    g.setColour (track);
+    g.drawHorizontalLine ((int) mid, plot.getX(), plot.getRight());
+
+    // Outermost first so the inner layers paint over it.
+    const juce::Colour colours[] = { voiceColour, reverbColour, ambienceColour };
+    for (int layer = 2; layer >= 0; --layer)
+    {
+        g.setColour (colours[layer].withAlpha (0.85f));
+        g.fillPath (mirrored (layer));
+    }
+
+    g.setColour (dim.withAlpha (0.55f));
+    g.strokePath (mirrored (3), juce::PathStrokeType (1.0f));
+}
+
 VoiceStemEditor::VoiceStemEditor (VoiceStemProcessor& p)
     : AudioProcessorEditor (p), proc (p)
 {
     setLookAndFeel (&look);
+    addAndMakeVisible (waveform);
     setupKnob (voice, "voice", "VOICE", voiceColour);
     setupKnob (ambience, "ambience", "AMBIENCE", ambienceColour);
     setupKnob (reverb, "reverb", "REVERB", reverbColour);
@@ -83,7 +166,7 @@ VoiceStemEditor::VoiceStemEditor (VoiceStemProcessor& p)
     addAndMakeVisible (lowLatency);
     lowLatencyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, "lowlat", lowLatency);
 
-    setSize (560, 320);
+    setSize (600, 470);
     timerCallback();
     startTimerHz (4);
 }
@@ -157,7 +240,9 @@ void VoiceStemEditor::resized()
     auto footer = r.removeFromBottom (36).reduced (16, 0);
     lowLatency.setBounds (footer.removeFromLeft (160).withSizeKeepingCentre (160, 24));
 
-    r = r.reduced (12, 0);
+    r = r.reduced (16, 0);
+    waveform.setBounds (r.removeFromTop (150));
+    r.removeFromTop (14);
     const int w = r.getWidth() / 3;
     for (auto* k : { &voice, &ambience, &reverb })
     {

@@ -11,7 +11,28 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    // Pulls pending meter frames into the waveform now (the view also does this on its own timer).
+    void pullMeters() { waveform.pull(); }
+
 private:
+    // Scrolling waveform, one pixel column per 10 ms hop. Layers are stacked outward from the
+    // centre line - voice, reverb, ambience - after the knob gains, so turning a knob down shrinks
+    // its colour. The grey outline is the unprocessed input for reference.
+    class WaveformView : public juce::Component, private juce::Timer
+    {
+    public:
+        explicit WaveformView (VoiceStemProcessor&);
+        void pull();
+        void paint (juce::Graphics&) override;
+
+    private:
+        void timerCallback() override { pull(); }
+
+        VoiceStemProcessor& proc;
+        std::vector<VoiceStemEngine::MeterFrame> history, scratch;
+        int writePos = 0; // next column to overwrite in the ring
+    };
+
     struct Look : juce::LookAndFeel_V4
     {
         Look();
@@ -32,6 +53,7 @@ private:
 
     VoiceStemProcessor& proc;
     Look look;
+    WaveformView waveform { proc };
     Knob voice, ambience, reverb;
     juce::ToggleButton lowLatency { "Low Latency" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> lowLatencyAttachment;

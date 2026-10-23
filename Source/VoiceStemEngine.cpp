@@ -107,6 +107,7 @@ void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr)
     splitter.process (dfOut.data(), voiceDelayed.data(), direct.data());
 
     const int delaySize = (int) inputDelay.size();
+    MeterFrame frame;
     for (size_t i = 0; i < hopOut.size(); ++i)
     {
         const float x = inputDelay[(size_t) inputDelayPos];
@@ -116,8 +117,36 @@ void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr)
 
         const float v = voiceDelayed[i];
         const float d = direct[i];
-        hopOut[i] = gV.getNextValue() * d + gR.getNextValue() * (v - d) + gA.getNextValue() * (x - v);
+        const float voicePart = gV.getNextValue() * d;
+        const float reverbPart = gR.getNextValue() * (v - d);
+        const float ambiencePart = gA.getNextValue() * (x - v);
+        hopOut[i] = voicePart + reverbPart + ambiencePart;
+
+        frame.input = std::max (frame.input, std::abs (x));
+        frame.voice = std::max (frame.voice, std::abs (voicePart));
+        frame.reverb = std::max (frame.reverb, std::abs (reverbPart));
+        frame.ambience = std::max (frame.ambience, std::abs (ambiencePart));
     }
+    meter = frame;
+}
+
+void VoiceStemEngine::pushMeterFrame (const MeterFrame& f)
+{
+    // Drop the frame if the UI is not reading (editor closed); never block the audio thread.
+    const auto scope = meterFifo.write (1);
+    if (scope.blockSize1 > 0)
+        meterFrames[(size_t) scope.startIndex1] = f;
+}
+
+int VoiceStemEngine::readMeterFrames (MeterFrame* dest, int maxFrames)
+{
+    const auto scope = meterFifo.read (juce::jmin (maxFrames, meterFifo.getNumReady()));
+    int n = 0;
+    for (int i = 0; i < scope.blockSize1; ++i)
+        dest[n++] = meterFrames[(size_t) (scope.startIndex1 + i)];
+    for (int i = 0; i < scope.blockSize2; ++i)
+        dest[n++] = meterFrames[(size_t) (scope.startIndex2 + i)];
+    return n;
 }
 
 void VoiceStemEngine::Channel::writeOut (const float* data, int n)
@@ -167,6 +196,8 @@ void VoiceStemEngine::process (juce::AudioBuffer<float>& buffer, const Gains& ta
 
             ch.hopPos = 0;
             ch.processHop (lastSnr);
+            if (c == 0)
+                pushMeterFrame (ch.meter);
             if (resampling)
             {
                 ch.fromModel.push (ch.hopOut.data(), hop);
