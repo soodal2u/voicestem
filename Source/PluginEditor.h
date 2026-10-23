@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 #pragma once
 
 #include "PluginProcessor.h"
@@ -56,6 +59,8 @@ private:
     WaveformView waveform { proc };
     Knob voice, ambience, reverb;
     juce::ToggleButton lowLatency { "Low Latency" };
+    // AGPL "appropriate legal notices": licence and where to get the source.
+    juce::HyperlinkButton sourceLink { "Open source (AGPL-3.0)", juce::URL ("https://github.com/soodal2u/voicestem") };
     juce::Slider knock;
     juce::Label knockLabel;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> knockAttachment;

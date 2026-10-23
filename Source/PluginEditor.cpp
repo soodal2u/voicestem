@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 #include "PluginEditor.h"
 
 namespace
@@ -163,6 +166,11 @@ VoiceStemEditor::VoiceStemEditor (VoiceStemProcessor& p)
     setupKnob (ambience, "ambience", "AMBIENCE", ambienceColour);
     setupKnob (reverb, "reverb", "REVERB", reverbColour);
 
+    sourceLink.setFont (juce::FontOptions (12.0f), false, juce::Justification::centredRight);
+    sourceLink.setColour (juce::HyperlinkButton::textColourId, dim);
+    sourceLink.setTooltip ("VoiceStem is free software under the GNU AGPL v3 - click for source code and third-party notices");
+    addAndMakeVisible (sourceLink);
+
     // Knock filter amount: how much of a desk thump to take out of the voice.
     knock.setSliderStyle (juce::Slider::LinearHorizontal);
     knock.setTextBoxStyle (juce::Slider::TextBoxRight, false, 46, 20);
@@ -252,7 +260,7 @@ void VoiceStemEditor::paint (juce::Graphics& g)
 void VoiceStemEditor::resized()
 {
     auto r = getLocalBounds().reduced (12);
-    r.removeFromTop (44);
+    sourceLink.setBounds (r.removeFromTop (44).reduced (16, 0).removeFromRight (170).withSizeKeepingCentre (170, 20));
     auto footer = r.removeFromBottom (36).reduced (16, 0);
     lowLatency.setBounds (footer.removeFromLeft (160).withSizeKeepingCentre (160, 24));
     knockLabel.setBounds (footer.removeFromLeft (90).withSizeKeepingCentre (90, 24));

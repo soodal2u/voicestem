@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 // Renders VoiceStemEditor to a PNG (the VST3-hosted view is a native child window,
 // which host-side snapshots cannot capture). With a WAV, the audio is processed first
 // so the waveform view shows it.

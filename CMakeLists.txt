@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(VoiceStem VERSION 0.2.2 LANGUAGES C CXX)
+project(VoiceStem VERSION 0.2.3 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 # Static CRT (here and in the Rust lib via +crt-static) so the plugin needs no VC++ redistributable.

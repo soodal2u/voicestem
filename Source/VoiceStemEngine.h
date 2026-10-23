@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>

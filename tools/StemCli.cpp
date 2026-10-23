@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 // Offline driver for VoiceStemEngine: renders a WAV through the engine and runs
 // self-checks (null test, latency alignment, real-time factor).
 //

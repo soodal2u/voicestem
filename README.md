@@ -1,8 +1,8 @@
 # VoiceStem
 
 A VST3 plugin that splits a mic signal into **Voice / Ambience / Reverb** and controls each with its own knob.
-Built with an open-source model (DeepFilterNet3) and our own DSP, inspired by the knob layout of Supertone Clear.
-(No code or models from the Clear binary are used.)
+Built from an open-source model (DeepFilterNet3) and our own DSP, with a control layout similar to Supertone Clear.
+(An independent project with no affiliation to Supertone. Clear's code, models and binaries are not used. See [License](#license) below.)
 
 ## How it works
 
@@ -69,7 +69,35 @@ Output: `C:/dev/voicestem-build/VoiceStem_artefacts/Release/VST3/VoiceStem.vst3`
 - `VoiceStemHostCheck <VoiceStem.vst3> <in.wav> <out.wav> <png>`: loads the plugin like a DAW and processes audio.
 - `VoiceStemSnapshot <png>`: saves an image of the editor.
 
-## Licenses
+## License
 
-- DeepFilterNet (libDF and models): MIT / Apache-2.0, © Hendrik Schröter
-- JUCE: AGPLv3 / commercial license
+VoiceStem is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License v3** (or any later version). See [LICENSE](LICENSE).
+This is because JUCE, which VoiceStem is built on, is offered as open source under AGPLv3. Anyone who distributes a binary must also provide its complete source code (this repository).
+
+### Open source used (sources)
+
+| Component | Use | License | Source |
+|---|---|---|---|
+| **DeepFilterNet** (libDF, DeepFilterNet3 and DeepFilterNet3-LL models), Hendrik Schröter | Voice/noise separation model and runtime (embedded in the binary) | MIT OR Apache-2.0 | https://github.com/Rikorose/DeepFilterNet |
+| **JUCE 8** (Raw Material Software) | Plugin/UI framework | AGPLv3 (commercial license also available) | https://github.com/juce-framework/JUCE |
+| ├ VST3 SDK (Steinberg) | VST3 plugin interface | MIT | bundled in JUCE |
+| ├ FLAC, Ogg Vorbis (Xiph.Org) | Audio formats in the JUCE modules | BSD | bundled in JUCE |
+| ├ libpng, zlib, libjpeg (IJG) | Image/compression in the JUCE modules | zlib / IJG | bundled in JUCE |
+| └ HarfBuzz, SheenBidi | Text rendering | Old MIT / Apache-2.0 | bundled in JUCE |
+| **tract** (Sonos) and 95 other Rust crates | ONNX inference and libDF dependencies | MIT / Apache-2.0 / Unlicense etc. (permissive) | crates.io |
+
+Every component's copyright notice and full license text is in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). The installer also places it next to the plugin. Regenerate it after changing dependencies:
+
+```bash
+python tools/gen_notices.py C:/dev/JUCE THIRD_PARTY_NOTICES.txt
+```
+
+### Algorithms referenced (implemented independently)
+
+- Late-reverb estimation: K. Lebart, J.-M. Boucher, P. N. Denbigh, "A New Method Based on Spectral Subtraction for Speech Dereverberation", *Acta Acustica*, 2001
+- Decision-directed a-priori SNR: Y. Ephraim, D. Malah, "Speech enhancement using a minimum mean-square error short-time spectral amplitude estimator", *IEEE Trans. ASSP*, 1984
+- DeepFilterNet: H. Schröter et al., "DeepFilterNet: Perceptually Motivated Real-Time Speech Enhancement", *Interspeech*, 2023
+
+### Note
+
+VoiceStem is an independent project. It is not affiliated with Supertone Inc. or its product *Clear*, and it does not use any of Clear's code, models or binaries. The Clear name is mentioned only to describe a similar control layout.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 soodal - VoiceStem (https://github.com/soodal2u/voicestem)
+
 //! Minimal C ABI around DeepFilterNet3 (libDF tract runtime) with the model embedded.
 //!
 //! Unlike libDF's own capi this does not need a model file on disk and never unwinds

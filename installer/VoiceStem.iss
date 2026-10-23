@@ -31,6 +31,8 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=no
+; 설치 첫 화면에 AGPLv3 전문을 보여 준다
+LicenseFile=..\LICENSE
 
 [Languages]
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
@@ -41,6 +43,11 @@ Name: "standalone"; Description: "단독 실행 앱도 설치 (DAW 없이 마이
 [Files]
 Source: "{#BuildDir}\VST3\VoiceStem.vst3\*"; DestDir: "{commoncf64}\VST3\VoiceStem.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#BuildDir}\Standalone\VoiceStem.exe"; DestDir: "{app}"; Flags: ignoreversion; Tasks: standalone
+; 라이선스·서드파티 고지: 제거 프로그램 폴더와 플러그인 번들 안 양쪽에 둔다
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{commoncf64}\VST3\VoiceStem.vst3\Contents\Resources"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD_PARTY_NOTICES.txt"; DestDir: "{commoncf64}\VST3\VoiceStem.vst3\Contents\Resources"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\VoiceStem"; Filename: "{app}\VoiceStem.exe"; Tasks: standalone
