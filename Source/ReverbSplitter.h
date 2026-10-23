@@ -28,6 +28,12 @@ public:
 
     int latency() const { return hop; }
 
+    // Spectral shape of the last analysed voice frame, for telling desk thumps from speech:
+    // speech always carries formant energy (400 Hz - 4 kHz); a knock transmitted through the
+    // desk is almost all below 250 Hz.
+    float getHighLowRatioDb() const { return highLowDb; }
+    float getFrameLevelDb() const { return frameDb; }
+
 private:
     static constexpr int fftOrder = 10;
     static constexpr int fftSize = 1 << fftOrder;
@@ -54,4 +60,5 @@ private:
     std::vector<std::vector<float>> psdHistory; // ring of delayFrames + 1 smoothed spectra
     int historyPos = 0;
     float decay = 0.0f;
+    float highLowDb = 0.0f, frameDb = -120.0f;
 };

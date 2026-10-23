@@ -1,7 +1,7 @@
 // Offline driver for VoiceStemEngine: renders a WAV through the engine and runs
 // self-checks (null test, latency alignment, real-time factor).
 //
-//   VoiceStemCli <in.wav> <out.wav> [--voice dB] [--ambience dB] [--reverb dB] [--ll] [--block N]
+//   VoiceStemCli <in.wav> <out.wav> [--voice dB] [--ambience dB] [--reverb dB] [--knock %] [--ll] [--block N]
 //   VoiceStemCli <in.wav> --check [--ll] [--block N]
 
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -108,7 +108,7 @@ int check (const juce::AudioBuffer<float>& in, double rate, bool ll, int block)
     const int n = in.getNumSamples();
 
     // 1. Unity gains must reproduce the input exactly (shifted by the reported latency).
-    auto unity = render (in, rate, { 1.0f, 1.0f, 1.0f }, ll, block);
+    auto unity = render (in, rate, { 1.0f, 1.0f, 1.0f, 1.0f }, ll, block); // knock filter on: must still sum to the input
     float maxErr = 0.0f;
     for (int i = 0; i < n; ++i)
         maxErr = juce::jmax (maxErr, std::abs (unity.out.getSample (0, i) - in.getSample (0, i)));
@@ -183,7 +183,8 @@ int main (int argc, char* argv[])
     if (args[1] == "--check")
         return check (in, rate, ll, block);
 
-    VoiceStemEngine::Gains g { toGain (value ("--voice", 0.0f)), toGain (value ("--ambience", -60.0f)), toGain (value ("--reverb", 0.0f)) };
+    VoiceStemEngine::Gains g { toGain (value ("--voice", 0.0f)), toGain (value ("--ambience", -60.0f)), toGain (value ("--reverb", 0.0f)),
+                               value ("--knock", 100.0f) / 100.0f };
     auto r = render (in, rate, g, ll, block);
     if (! r.ok)
         std::cerr << "warning: model failed to load, output is pass-through\n";

@@ -163,6 +163,22 @@ VoiceStemEditor::VoiceStemEditor (VoiceStemProcessor& p)
     setupKnob (ambience, "ambience", "AMBIENCE", ambienceColour);
     setupKnob (reverb, "reverb", "REVERB", reverbColour);
 
+    // Knock filter amount: how much of a desk thump to take out of the voice.
+    knock.setSliderStyle (juce::Slider::LinearHorizontal);
+    knock.setTextBoxStyle (juce::Slider::TextBoxRight, false, 46, 20);
+    knock.setColour (juce::Slider::trackColourId, ambienceColour);
+    knock.setColour (juce::Slider::backgroundColourId, track);
+    knock.setColour (juce::Slider::thumbColourId, text);
+    knock.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    knock.setColour (juce::Slider::textBoxTextColourId, dim);
+    addAndMakeVisible (knock);
+    knockAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (proc.apvts, "knock", knock);
+    knock.setDoubleClickReturnValue (true, 100.0);
+    knockLabel.setText ("Knock Filter", juce::dontSendNotification);
+    knockLabel.setFont (juce::FontOptions (14.0f));
+    knockLabel.setColour (juce::Label::textColourId, dim);
+    addAndMakeVisible (knockLabel);
+
     addAndMakeVisible (lowLatency);
     lowLatencyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, "lowlat", lowLatency);
 
@@ -239,6 +255,8 @@ void VoiceStemEditor::resized()
     r.removeFromTop (44);
     auto footer = r.removeFromBottom (36).reduced (16, 0);
     lowLatency.setBounds (footer.removeFromLeft (160).withSizeKeepingCentre (160, 24));
+    knockLabel.setBounds (footer.removeFromLeft (90).withSizeKeepingCentre (90, 24));
+    knock.setBounds (footer.removeFromLeft (170).withSizeKeepingCentre (170, 24));
 
     r = r.reduced (16, 0);
     waveform.setBounds (r.removeFromTop (150));

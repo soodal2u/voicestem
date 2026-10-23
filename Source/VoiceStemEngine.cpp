@@ -115,6 +115,14 @@ void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr, std::atomic<
 
     splitter.process (dfOut.data(), voiceDelayed.data(), direct.data());
 
+    // Desk-thump classifier: speech has formants, a knock through the desk does not.
+    // High band 25 dB below the low band is still speech-like; 35 dB below is a thump.
+    float thump = 0.0f;
+    if (splitter.getFrameLevelDb() > -60.0f)
+        thump = juce::jlimit (0.0f, 1.0f, (-25.0f - splitter.getHighLowRatioDb()) / 10.0f);
+    const float keepTarget = 1.0f - knockAmount * thump;
+    const float keepStep = (keepTarget - keep) / (float) hopOut.size();
+
     const int delaySize = (int) inputDelay.size();
     MeterFrame frame;
     for (size_t i = 0; i < hopOut.size(); ++i)
@@ -124,8 +132,9 @@ void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr, std::atomic<
         if (++inputDelayPos == delaySize)
             inputDelayPos = 0;
 
-        const float v = voiceDelayed[i];
-        const float d = direct[i];
+        keep += keepStep;
+        const float v = keep * voiceDelayed[i];
+        const float d = keep * direct[i];
         const float voicePart = gV.getNextValue() * d;
         const float reverbPart = gR.getNextValue() * (v - d);
         const float ambiencePart = gA.getNextValue() * (x - v);
@@ -183,6 +192,7 @@ void VoiceStemEngine::process (juce::AudioBuffer<float>& buffer, const Gains& ta
             ch.gA.setCurrentAndTargetValue (target.ambience);
             ch.gR.setCurrentAndTargetValue (target.reverb);
         }
+        ch.knockAmount = target.knock;
         ch.gV.setTargetValue (target.voice);
         ch.gA.setTargetValue (target.ambience);
         ch.gR.setTargetValue (target.reverb);

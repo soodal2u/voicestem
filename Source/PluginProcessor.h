@@ -59,6 +59,7 @@ private:
     std::atomic<float>* ambience = nullptr;
     std::atomic<float>* reverb = nullptr;
     std::atomic<float>* lowLatency = nullptr;
+    std::atomic<float>* knock = nullptr;
     std::atomic<bool> modelOk { true };
     double currentRate = 0.0;
     int currentBlock = 0;

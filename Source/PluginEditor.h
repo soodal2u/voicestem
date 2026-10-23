@@ -56,6 +56,9 @@ private:
     WaveformView waveform { proc };
     Knob voice, ambience, reverb;
     juce::ToggleButton lowLatency { "Low Latency" };
+    juce::Slider knock;
+    juce::Label knockLabel;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> knockAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> lowLatencyAttachment;
     juce::String status;
 

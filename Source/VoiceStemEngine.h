@@ -16,6 +16,8 @@
 //   direct   = ReverbSplitter(voice),   reverb = voice - direct
 //   ambience = input - voice
 //   out      = gV * direct + gR * reverb + gA * ambience
+// Frames whose voice is all low end (a desk knock, not speech) are moved from voice into
+// ambience by the knock filter, so the sum is unchanged.
 // With all gains at 1 the output is the input delayed by getLatencySamples().
 class VoiceStemEngine
 {
@@ -23,6 +25,7 @@ public:
     struct Gains
     {
         float voice = 1.0f, ambience = 1.0f, reverb = 1.0f;
+        float knock = 0.0f; // 0..1: how much of a desk thump to move from voice to ambience
     };
 
     // Peak levels of one 10 ms hop (first channel) after the knob gains, for the waveform view.
@@ -70,6 +73,7 @@ private:
         std::vector<float> outFifo;
         int outRead = 0, outWrite = 0;
         juce::SmoothedValue<float> gV, gA, gR;
+        float knockAmount = 0.0f, keep = 1.0f; // keep = share of the voice left in the voice stem
         MeterFrame meter;
 
         void processHop (std::atomic<float>& snr, std::atomic<bool>& broken);

@@ -82,6 +82,19 @@ void ReverbSplitter::process (const float* voice, float* voiceDelayed, float* di
         fftBuf[(size_t) i] = input[(size_t) i] * window[(size_t) i];
     fft.performRealOnlyForwardTransform (fftBuf.data(), true);
 
+    {
+        // Band energies on the 46.9 Hz bin grid: low 47-234 Hz, high 422-3984 Hz.
+        double low = 1e-12, high = 1e-12, level = 1e-12;
+        for (int k = 1; k <= 5; ++k)
+            low += (double) fftBuf[(size_t) (2 * k)] * fftBuf[(size_t) (2 * k)] + (double) fftBuf[(size_t) (2 * k + 1)] * fftBuf[(size_t) (2 * k + 1)];
+        for (int k = 9; k <= 85; ++k)
+            high += (double) fftBuf[(size_t) (2 * k)] * fftBuf[(size_t) (2 * k)] + (double) fftBuf[(size_t) (2 * k + 1)] * fftBuf[(size_t) (2 * k + 1)];
+        for (float v : input)
+            level += (double) v * v;
+        highLowDb = (float) (10.0 * std::log10 (high / low));
+        frameDb = (float) (10.0 * std::log10 (level / frame));
+    }
+
     auto& current = psdHistory[(size_t) historyPos];
     const auto& late = psdHistory[(size_t) ((historyPos + 1) % (delayFrames + 1))]; // oldest = Nd frames ago
 

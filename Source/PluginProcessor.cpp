@@ -11,6 +11,7 @@ VoiceStemProcessor::VoiceStemProcessor()
     ambience = apvts.getRawParameterValue ("ambience");
     reverb = apvts.getRawParameterValue ("reverb");
     lowLatency = apvts.getRawParameterValue ("lowlat");
+    knock = apvts.getRawParameterValue ("knock");
     apvts.addParameterListener ("lowlat", this);
 }
 
@@ -42,6 +43,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout VoiceStemProcessor::createLa
     layout.add (knob ("voice", "Voice", 0.0f));
     layout.add (knob ("ambience", "Ambience", offDb));
     layout.add (knob ("reverb", "Reverb", 0.0f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "knock", 1 }, "Knock Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")
+            .withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; })));
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "lowlat", 1 }, "Low Latency", false,
         juce::AudioParameterBoolAttributes().withAutomatable (false)));
@@ -130,6 +135,7 @@ void VoiceStemProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     g.voice = knobToGain (voice->load());
     g.ambience = knobToGain (ambience->load());
     g.reverb = knobToGain (reverb->load());
+    g.knock = knock->load() / 100.0f;
 
     const int n = buffer.getNumSamples();
     const bool record = buffer.getNumChannels() > 0 && n <= (int) recorderInput.size();
