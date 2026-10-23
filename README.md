@@ -40,7 +40,7 @@ Download `VoiceStem-Setup-<version>.exe` from [Releases](https://github.com/sood
 - Uninstall from Windows "Apps". The VC++ runtime is linked statically, so nothing else needs installing.
 - Installing an update while a host has VoiceStem loaded is fine; the new version takes effect when the host reloads it.
 
-VST2 is not provided: Steinberg no longer licenses the VST2 SDK to new developers, so a VST2 build can't legally be distributed. Every current host, including Reaper, Cubase, Ableton, FL Studio and OBS 30+, supports VST3.
+VST2 is not provided: Steinberg no longer licenses the VST2 SDK to new developers, so a VST2 build can't legally be distributed. Every current host, including Reaper, Cubase, Ableton and FL Studio, supports VST3.
 
 ## Build (Windows, VS 2022 Build Tools)
 
