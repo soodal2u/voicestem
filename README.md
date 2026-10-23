@@ -32,6 +32,16 @@ Knob range is −60 (Off) to +12 dB. Defaults are Voice 0 dB, Ambience Off and R
 - Denoising: SI-SDR for noisy speech at 0 dB SNR went from 6.0 to **20.0 dB** (LL: 18.9 dB).
 - Reverb separation (RT60 0.79 s): the reverb stem takes 16 dB out of reverberant speech but only 22 dB out of dry speech. Its effect is weaker than a purpose-trained model; a dedicated 3-stem training run would be needed to match Clear.
 
+## Install
+
+Download `VoiceStem-Setup-<version>.exe` from [Releases](https://github.com/soodal2u/voicestem/releases) and run it (administrator approval required).
+- The plugin goes into the standard VST3 folder `C:\Program Files\Common Files\VST3\VoiceStem.vst3`, where every DAW and host finds it.
+- Optionally installs the standalone app too (Start menu entry).
+- Uninstall from Windows "Apps". The VC++ runtime is linked statically, so nothing else needs installing.
+- Installing an update while a host has VoiceStem loaded is fine; the new version takes effect when the host reloads it.
+
+VST2 is not provided: Steinberg no longer licenses the VST2 SDK to new developers, so a VST2 build can't legally be distributed. Every current host, including Reaper, Cubase, Ableton, FL Studio and OBS 30+, supports VST3.
+
 ## Build (Windows, VS 2022 Build Tools)
 
 Requirements: CMake ≥ 3.22, Rust (stable-msvc, `rustup`), JUCE (`C:/dev/JUCE`, override with `-DVOICESTEM_JUCE_DIR`).

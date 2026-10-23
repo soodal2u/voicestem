@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
-project(VoiceStem VERSION 0.1.0 LANGUAGES C CXX)
+project(VoiceStem VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+# Static CRT (here and in the Rust lib via +crt-static) so the plugin needs no VC++ redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(VOICESTEM_JUCE_DIR "C:/dev/JUCE" CACHE PATH "JUCE checkout")
 add_subdirectory(${VOICESTEM_JUCE_DIR} JUCE)
 
@@ -29,6 +31,7 @@ execute_process(COMMAND ${CARGO} fetch --manifest-path ${RUST_MANIFEST} COMMAND_
 add_custom_command(
     OUTPUT ${DFWRAP_LIB}
     COMMAND ${CMAKE_COMMAND} -E env VOICESTEM_MODEL_DIR=${MODEL_DIR} CARGO_TARGET_DIR=${RUST_TARGET_DIR}
+            "RUSTFLAGS=-C target-feature=+crt-static"
             ${CARGO} build --release --manifest-path ${RUST_MANIFEST}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/rust/src/lib.rs ${RUST_MANIFEST} ${CMAKE_CURRENT_SOURCE_DIR}/rust/Cargo.lock
     COMMENT "Building DeepFilterNet wrapper (cargo)"
