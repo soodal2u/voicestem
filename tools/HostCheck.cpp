@@ -38,22 +38,27 @@ int main (int argc, char* argv[])
         return 1;
     const double rate = reader->sampleRate;
     const int n = (int) reader->lengthInSamples;
-    juce::AudioBuffer<float> audio (1, n);
-    reader->read (&audio, 0, n, 0, true, false);
+    juce::AudioBuffer<float> audio (2, n);
+    reader->read (&audio, 0, n, 0, true, true);
 
     juce::String err;
+    const auto t0 = juce::Time::getMillisecondCounterHiRes();
     auto plugin = formats.createPluginInstance (*found[0], rate, 512, err);
+    const auto t1 = juce::Time::getMillisecondCounterHiRes();
     if (plugin == nullptr)
     {
         std::cerr << "instantiate failed: " << err << "\n";
         return 1;
     }
 
-    juce::AudioProcessor::BusesLayout mono;
-    mono.inputBuses.add (juce::AudioChannelSet::mono());
-    mono.outputBuses.add (juce::AudioChannelSet::mono());
-    plugin->setBusesLayout (mono);
+    // Same order as UnderTone: stereo layout, then prepare (which loads one model per channel).
+    juce::AudioProcessor::BusesLayout stereo;
+    stereo.inputBuses.add (juce::AudioChannelSet::stereo());
+    stereo.outputBuses.add (juce::AudioChannelSet::stereo());
+    std::cout << "stereo layout: " << (plugin->setBusesLayout (stereo) ? "ok" : "rejected") << "\n";
     plugin->prepareToPlay (rate, 512);
+    std::cout << "instantiate " << juce::roundToInt (t1 - t0) << " ms, prepare "
+              << juce::roundToInt (juce::Time::getMillisecondCounterHiRes() - t1) << " ms\n";
 
     for (auto* p : plugin->getParameters())
         std::cout << "param: " << p->getName (32) << " = " << p->getCurrentValueAsText() << "\n";
@@ -65,14 +70,15 @@ int main (int argc, char* argv[])
             p->setValueNotifyingHost (p->getValueForText ("-12"));
 
     const int lat = plugin->getLatencySamples();
-    juce::AudioBuffer<float> work (1, n + lat);
+    juce::AudioBuffer<float> work (2, n + lat);
     work.clear();
-    work.copyFrom (0, 0, audio, 0, 0, n);
+    for (int c = 0; c < 2; ++c)
+        work.copyFrom (c, 0, audio, c, 0, n);
     juce::MidiBuffer midi;
     for (int pos = 0; pos < work.getNumSamples(); pos += 512)
     {
         const int len = juce::jmin (512, work.getNumSamples() - pos);
-        juce::AudioBuffer<float> block (work.getArrayOfWritePointers(), 1, pos, len);
+        juce::AudioBuffer<float> block (work.getArrayOfWritePointers(), 2, pos, len);
         plugin->processBlock (block, midi);
     }
     plugin->releaseResources();
@@ -80,7 +86,7 @@ int main (int argc, char* argv[])
     outFile.deleteFile();
     std::unique_ptr<juce::OutputStream> os (outFile.createOutputStream().release());
     juce::WavAudioFormat wav;
-    auto writer = wav.createWriterFor (os, juce::AudioFormatWriterOptions().withSampleRate (rate).withNumChannels (1).withBitsPerSample (16));
+    auto writer = wav.createWriterFor (os, juce::AudioFormatWriterOptions().withSampleRate (rate).withNumChannels (2).withBitsPerSample (16));
     writer->writeFromAudioSampleBuffer (work, lat, n);
     writer.reset();
     std::cout << "rms in " << audio.getRMSLevel (0, 0, n) << " out " << work.getRMSLevel (0, lat, n) << "\n";
