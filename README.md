@@ -42,6 +42,12 @@ Download `VoiceStem-Setup-<version>.exe` from [Releases](https://github.com/sood
 
 VST2 is not provided: Steinberg no longer licenses the VST2 SDK to new developers, so a VST2 build can't legally be distributed. Every current host, including Reaper, Cubase, Ableton and FL Studio, supports VST3.
 
+## Fault protection and diagnostics
+
+- NaN/Inf in the input (from a driver or another effect) is replaced with silence before it reaches the model. If the model itself produces NaN/Inf, it is bypassed and reloaded automatically.
+- Output beyond +12 dBFS is clamped (non-finite values become 0).
+- **Black box:** when the output is much louder than any recent input (≥ −12 dBFS and ≥ +18 dB above input), or contains NaN/Inf, the last 4 seconds are saved automatically to `%APPDATA%\VoiceStem\incidents\incident-<time>.wav` (left = input, right = output), and the cause is logged in `%APPDATA%\VoiceStem\voicestem.log`. At most one capture every 10 seconds.
+
 ## Build (Windows, VS 2022 Build Tools)
 
 Requirements: CMake ≥ 3.22, Rust (stable-msvc, `rustup`), JUCE (`C:/dev/JUCE`, override with `-DVOICESTEM_JUCE_DIR`).

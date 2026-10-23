@@ -6,6 +6,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
+#include "../Source/IncidentRecorder.h"
 #include "../Source/VoiceStemEngine.h"
 
 #include <chrono>
@@ -21,6 +22,8 @@ struct Render
     int latency = 0;
     double seconds = 0.0;
     bool ok = false;
+    juce::StringArray incidents;
+    int nonFiniteInput = 0, clamped = 0;
 };
 
 Render render (const juce::AudioBuffer<float>& in, double rate, VoiceStemEngine::Gains gains, bool ll, int block)
@@ -37,13 +40,24 @@ Render render (const juce::AudioBuffer<float>& in, double rate, VoiceStemEngine:
     for (int c = 0; c < in.getNumChannels(); ++c)
         work.copyFrom (c, 0, in, c, 0, in.getNumSamples());
 
+    IncidentRecorder recorder;
+    recorder.prepare (rate);
+    std::vector<float> raw ((size_t) block);
+
     const auto t0 = std::chrono::steady_clock::now();
     for (int pos = 0; pos < total; pos += block)
     {
         const int n = juce::jmin (block, total - pos);
         juce::AudioBuffer<float> view (work.getArrayOfWritePointers(), work.getNumChannels(), pos, n);
+        std::copy_n (view.getReadPointer (0), n, raw.data());
         engine.process (view, gains);
+        recorder.push (raw.data(), view.getReadPointer (0), n);
+        if (recorder.hasPendingDump())
+            r.incidents.add (recorder.describeTrigger() + " -> "
+                             + recorder.dump (juce::File::getCurrentWorkingDirectory().getChildFile ("incidents")).getFileName());
     }
+    r.nonFiniteInput = (int) engine.getNonFiniteInputCount();
+    r.clamped = (int) engine.getClampedOutputCount();
     r.seconds = std::chrono::duration<double> (std::chrono::steady_clock::now() - t0).count();
 
     r.out.setSize (in.getNumChannels(), in.getNumSamples());
@@ -178,6 +192,9 @@ int main (int argc, char* argv[])
         std::cerr << "cannot write " << args[1] << "\n";
         return 1;
     }
+    for (auto& i : r.incidents)
+        std::cout << "incident: " << i << "\n";
+    std::cout << "non-finite input " << r.nonFiniteInput << ", clamped output " << r.clamped << "\n";
     std::cout << "wrote " << args[1] << " (latency " << r.latency << ", rms in " << rms (in.getReadPointer (0), in.getNumSamples())
               << " out " << rms (r.out.getReadPointer (0), r.out.getNumSamples()) << ", " << r.seconds << " s)\n";
     return 0;

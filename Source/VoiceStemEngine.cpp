@@ -13,10 +13,10 @@ void VoiceStemEngine::freeModels()
     channels.clear();
 }
 
-bool VoiceStemEngine::prepare (double hostSampleRate, int maxBlockSize, int numChannels, bool lowLatency)
+bool VoiceStemEngine::prepare (double hostSampleRate, int maxBlockSize, int numChannels, bool lowLatency, bool forceReload)
 {
     // Loading the network takes a while, so keep it across re-prepares when possible.
-    if ((int) channels.size() != numChannels || lowLatency != lowLatencyModel)
+    if (forceReload || (int) channels.size() != numChannels || lowLatency != lowLatencyModel)
     {
         freeModels();
         lowLatencyModel = lowLatency;
@@ -88,21 +88,30 @@ bool VoiceStemEngine::prepare (double hostSampleRate, int maxBlockSize, int numC
 
     latency = prefill + (int) std::lround ((dfLatency + ReverbSplitter::hop) * toHost);
     snapGains = true;
+    modelBroken = false;
     return ok;
 }
 
-void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr)
+void VoiceStemEngine::Channel::processHop (std::atomic<float>& snr, std::atomic<bool>& broken)
 {
-    if (df != nullptr)
+    bool usable = df != nullptr && ! broken.load (std::memory_order_relaxed);
+    if (usable)
     {
         const float s = vsdf_process (df, hopIn.data(), dfOut.data());
         if (! std::isnan (s))
             snr = s;
+
+        // A recurrent network that has seen NaN stays poisoned; never let that reach the output.
+        for (float v : dfOut)
+            if (! std::isfinite (v))
+            {
+                broken = true;
+                usable = false;
+                break;
+            }
     }
-    else
-    {
-        std::copy (hopIn.begin(), hopIn.end(), dfOut.begin());
-    }
+    if (! usable)
+        std::copy (hopIn.begin(), hopIn.end(), dfOut.begin()); // voice = input until reloaded
 
     splitter.process (dfOut.data(), voiceDelayed.data(), direct.data());
 
@@ -178,7 +187,17 @@ void VoiceStemEngine::process (juce::AudioBuffer<float>& buffer, const Gains& ta
         ch.gA.setTargetValue (target.ambience);
         ch.gR.setTargetValue (target.reverb);
 
-        const float* in = buffer.getReadPointer (c);
+        // Replace NaN/Inf from upstream (drivers, other effects) with silence before anything
+        // stateful sees it; otherwise the model and filters would stay broken.
+        float* io = buffer.getWritePointer (c);
+        for (int i = 0; i < n; ++i)
+            if (! std::isfinite (io[i]))
+            {
+                io[i] = 0.0f;
+                nonFiniteInput.fetch_add (1, std::memory_order_relaxed);
+            }
+
+        const float* in = io;
         const float* src = in;
         int m = n;
         if (resampling)
@@ -195,7 +214,7 @@ void VoiceStemEngine::process (juce::AudioBuffer<float>& buffer, const Gains& ta
                 continue;
 
             ch.hopPos = 0;
-            ch.processHop (lastSnr);
+            ch.processHop (lastSnr, modelBroken);
             if (c == 0)
                 pushMeterFrame (ch.meter);
             if (resampling)
@@ -217,7 +236,15 @@ void VoiceStemEngine::process (juce::AudioBuffer<float>& buffer, const Gains& ta
         {
             if (i < available)
             {
-                out[i] = ch.outFifo[(size_t) ch.outRead];
+                // Last line of defence: knobs top out at +12 dB, so anything far beyond full
+                // scale is a fault, not music. Clamp it instead of passing a bang to the host.
+                float v = ch.outFifo[(size_t) ch.outRead];
+                if (! (std::abs (v) <= outputLimit))
+                {
+                    v = std::isfinite (v) ? juce::jlimit (-outputLimit, outputLimit, v) : 0.0f;
+                    clampedOutput.fetch_add (1, std::memory_order_relaxed);
+                }
+                out[i] = v;
                 if (++ch.outRead == size)
                     ch.outRead = 0;
             }

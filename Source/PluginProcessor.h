@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "IncidentRecorder.h"
 #include "VoiceStemEngine.h"
 
 class VoiceStemProcessor : public juce::AudioProcessor,
@@ -47,9 +48,13 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     void parameterChanged (const juce::String& id, float) override;
     void handleAsyncUpdate() override;
-    void prepareEngine();
+    void prepareEngine (bool forceReload = false);
+    static juce::File getDataFolder();   // %APPDATA%\VoiceStem: voicestem.log, incidents\*.wav
+    static void log (const juce::String& line);
 
     VoiceStemEngine engine;
+    IncidentRecorder recorder;
+    std::vector<float> recorderInput;
     std::atomic<float>* voice = nullptr;
     std::atomic<float>* ambience = nullptr;
     std::atomic<float>* reverb = nullptr;

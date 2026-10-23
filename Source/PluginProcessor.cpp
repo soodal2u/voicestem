@@ -55,10 +55,22 @@ bool VoiceStemProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     return in == out && (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo());
 }
 
-void VoiceStemProcessor::prepareEngine()
+juce::File VoiceStemProcessor::getDataFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("VoiceStem");
+}
+
+void VoiceStemProcessor::log (const juce::String& line)
+{
+    auto file = getDataFolder().getChildFile ("voicestem.log");
+    file.getParentDirectory().createDirectory();
+    file.appendText (juce::Time::getCurrentTime().formatted ("%Y-%m-%d %H:%M:%S ") + line + "\n", false, false, "\n");
+}
+
+void VoiceStemProcessor::prepareEngine (bool forceReload)
 {
     const int numCh = juce::jmax (getTotalNumInputChannels(), getTotalNumOutputChannels(), 1);
-    modelOk = engine.prepare (currentRate, currentBlock, numCh, lowLatency->load() > 0.5f);
+    modelOk = engine.prepare (currentRate, currentBlock, numCh, lowLatency->load() > 0.5f, forceReload);
     setLatencySamples (engine.getLatencySamples());
 }
 
@@ -67,6 +79,8 @@ void VoiceStemProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     currentRate = sampleRate;
     currentBlock = samplesPerBlock;
     prepareEngine();
+    recorder.prepare (sampleRate);
+    recorderInput.assign ((size_t) juce::jmax (samplesPerBlock, 4096), 0.0f);
 }
 
 void VoiceStemProcessor::parameterChanged (const juce::String&, float)
@@ -77,13 +91,33 @@ void VoiceStemProcessor::parameterChanged (const juce::String&, float)
 
 void VoiceStemProcessor::handleAsyncUpdate()
 {
-    if (currentRate <= 0.0 || (lowLatency->load() > 0.5f) == engine.isLowLatency())
+    if (recorder.hasPendingDump())
+    {
+        const auto file = recorder.dump (getDataFolder().getChildFile ("incidents"));
+        log ("incident (" + recorder.describeTrigger() + ") -> " + file.getFullPathName()
+             + " | non-finite input samples so far " + juce::String ((juce::int64) engine.getNonFiniteInputCount())
+             + ", clamped output samples " + juce::String ((juce::int64) engine.getClampedOutputCount()));
+    }
+
+    if (currentRate <= 0.0)
         return;
 
-    suspendProcessing (true);
-    prepareEngine();
-    suspendProcessing (false);
-    updateHostDisplay (ChangeDetails().withLatencyChanged (true));
+    if (engine.needsModelReload())
+    {
+        log ("model produced NaN/Inf - reloading (non-finite input samples so far "
+             + juce::String ((juce::int64) engine.getNonFiniteInputCount()) + ")");
+        suspendProcessing (true);
+        prepareEngine (true);
+        suspendProcessing (false);
+    }
+
+    if ((lowLatency->load() > 0.5f) != engine.isLowLatency())
+    {
+        suspendProcessing (true);
+        prepareEngine();
+        suspendProcessing (false);
+        updateHostDisplay (ChangeDetails().withLatencyChanged (true));
+    }
 }
 
 void VoiceStemProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -96,7 +130,18 @@ void VoiceStemProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     g.voice = knobToGain (voice->load());
     g.ambience = knobToGain (ambience->load());
     g.reverb = knobToGain (reverb->load());
+
+    const int n = buffer.getNumSamples();
+    const bool record = buffer.getNumChannels() > 0 && n <= (int) recorderInput.size();
+    if (record)
+        std::copy_n (buffer.getReadPointer (0), n, recorderInput.data());
+
     engine.process (buffer, g);
+
+    if (record)
+        recorder.push (recorderInput.data(), buffer.getReadPointer (0), n);
+    if (recorder.hasPendingDump() || engine.needsModelReload())
+        triggerAsyncUpdate();
 }
 
 juce::AudioProcessorEditor* VoiceStemProcessor::createEditor()
